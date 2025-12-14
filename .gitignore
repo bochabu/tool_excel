@@ -1,0 +1,15 @@
+```
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.env
+.vercel
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+```
