@@ -7,3 +7,5 @@ pandas
 openpyxl
 jinja2
 python-dotenv
+groq  # Thêm cho Groq provider
+google-generativeai  # Thêm cho Gemini provider
