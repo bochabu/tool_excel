@@ -1,11 +1,3 @@
-fastapi
-uvicorn
-python-multipart
-python-docx
-openai
-pandas
-openpyxl
-jinja2
-python-dotenv
-groq  # Thêm cho Groq provider
-google-generativeai  # Thêm cho Gemini provider
+fastapi==0.104.1
+python-multipart==0.0.6
+groq==0.4.1
