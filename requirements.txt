@@ -3,9 +3,6 @@ uvicorn
 python-multipart
 python-docx
 openai
-pandas
-openpyxl
-jinja2
-python-dotenv
-groq  # Thêm cho Groq provider
-google-generativeai  # Thêm cho Gemini provider
+groq
+google-generativeai
+openpyxl  # Thay pandas để write Excel nhẹ hơn
