@@ -3,6 +3,7 @@ uvicorn
 python-multipart
 python-docx
 openai
+pandas
 openpyxl
 jinja2
 python-dotenv
