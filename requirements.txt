@@ -2,5 +2,8 @@ fastapi
 uvicorn
 python-multipart
 python-docx
-groq
-openpyxl  # Thay pandas để write Excel nhẹ hơn
+pandas
+openpyxl
+jinja2
+python-dotenv
+groq  # Thêm cho Groq provider
