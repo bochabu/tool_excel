@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Word → Excel Converter v3 - Custom Metadata</title>
+    <title>Word → CSV Converter - Groq</title>
     <style>
         * {
             margin: 0;
@@ -56,6 +56,16 @@
             line-height: 1.8;
         }
         
+        .info-banner {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
         .section-title {
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
@@ -64,9 +74,6 @@
             margin: 30px 0 20px 0;
             font-size: 16px;
             font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
         
@@ -119,6 +126,16 @@
             color: #666;
             margin-top: 5px;
             line-height: 1.4;
+        }
+        
+        .helper-text a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .helper-text a:hover {
+            text-decoration: underline;
         }
         
         .info-box {
@@ -175,7 +192,7 @@
         button {
             width: 100%;
             padding: 16px;
-            background: #282fff;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
             border-radius: 10px;
@@ -228,6 +245,7 @@
             border-radius: 8px;
             display: none;
             font-size: 14px;
+            white-space: pre-wrap;
         }
         
         .error {
@@ -242,7 +260,6 @@
             color: #363;
         }
         
-        /* Modal Styles */
         .modal {
             display: none;
             position: fixed;
@@ -411,18 +428,22 @@
 <body>
     <div class="container">
         <h1>
-            📄 Word → Excel Converter
-            <span class="version-badge">v3.0 PRO</span>
+            📄 Word → CSV Converter
+            <span class="version-badge">v3.2 Groq</span>
         </h1>
         <p class="subtitle">
-            Chuyển đổi file Word sang Excel với <strong>Metadata tùy chỉnh</strong><br>
-            Tự động phát hiện cấu trúc • Output 31 cột • Hỗ trợ 3 AI providers
+            Chuyển đổi file Word sang CSV với <strong>Groq AI</strong><br>
+            Tối ưu cho Vercel • Nhanh nhất • Miễn phí 100%
         </p>
+        
+        <div class="info-banner">
+            ⚡ Phiên bản tối ưu: Chỉ dùng Groq API - Nhanh hơn 5x - Output CSV (mở được bằng Excel)
+        </div>
         
         <form id="uploadForm">
             <!-- File & API Section -->
             <div class="section-title">
-                📁 Bước 1: Upload File & Chọn AI Provider
+                📁 Bước 1: Upload File & API Key
             </div>
             
             <div class="form-group">
@@ -433,15 +454,6 @@
             
             <div class="form-row">
                 <div class="form-group">
-                    <label for="apiProvider">🤖 AI Provider</label>
-                    <select id="apiProvider" name="api_provider">
-                        <option value="groq">Groq (Miễn phí, Nhanh nhất) ⭐ KHUYÊN DÙNG</option>
-                        <option value="gemini">Google Gemini (Miễn phí, KHÔNG giới hạn)</option>
-                        <option value="openai">OpenAI GPT-4o-mini (Trả phí)</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
                     <label for="language">🌐 Ngôn ngữ output</label>
                     <select id="language" name="language">
                         <option value="vi">🇻🇳 Tiếng Việt</option>
@@ -451,12 +463,12 @@
             </div>
             
             <div class="form-group">
-                <label for="apiKey">🔑 API Key</label>
-                <input type="password" id="apiKey" name="api_key" placeholder="Nhập API key..." required>
+                <label for="apiKey">🔑 Groq API Key (Miễn phí)</label>
+                <input type="password" id="apiKey" name="api_key" placeholder="gsk_..." required>
                 <div class="helper-text">
-                    <strong>Groq (Khuyên dùng):</strong> <a href="https://console.groq.com/keys" target="_blank">Tạo free tại console.groq.com/keys</a> - Nhanh nhất!<br>
-                    <strong>Gemini:</strong> <a href="https://aistudio.google.com/app/apikey" target="_blank">Tạo free tại aistudio.google.com</a> - Không giới hạn!<br>
-                    <strong>OpenAI:</strong> <a href="https://platform.openai.com/api-keys" target="_blank">Tạo tại platform.openai.com</a> - Trả phí theo usage
+                    <strong>✨ Tạo free API key:</strong> 
+                    <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a>
+                    (Không cần thẻ tín dụng - 100% miễn phí)
                 </div>
             </div>
             
@@ -466,17 +478,12 @@
             </div>
             
             <div class="info-box">
-                <strong>💡 Mẹo:</strong> Metadata này sẽ được áp dụng cho TẤT CẢ các dòng trong file Excel output.
+                <strong>💡 Mẹo:</strong> Metadata này sẽ được áp dụng cho TẤT CẢ các dòng trong file CSV output.
                 <ul>
-                    <li><strong>Nếu ĐỂ TRỐNG tất cả:</strong> Tool sẽ tự động trích xuất từ Word và áp dụng logic:
-                        <br>→ test_name = test_category = topic_name = topic_category = question_category (lấy từ Word)
-                        <br>→ test_hashtag = topic_hashtag = question_hashtag (tự sinh từ tên)
-                    </li>
+                    <li><strong>Nếu ĐỂ TRỐNG tất cả:</strong> Tool sẽ tự động trích xuất từ Word</li>
                     <li><strong>Nếu chỉ điền Test Name:</strong> Tất cả category & topic name sẽ giống Test Name</li>
                     <li><strong>Nếu điền riêng Topic/Question:</strong> Sẽ ưu tiên giá trị đã nhập</li>
                     <li>Hashtag tự động thêm # nếu bạn chưa nhập</li>
-                    <li><strong>improve_comment & read_more_comment</strong> sẽ trích xuất từ phần "Gợi ý đọc thêm"</li>
-                    <li><strong>good_comment</strong>: "Đã làm tốt!" (VI) / "Well done!" (EN)</li>
                 </ul>
             </div>
             
@@ -532,7 +539,7 @@
         
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p id="loadingText">Đang xử lý... Vui lòng đợi (10-30 giây)</p>
+            <p id="loadingText">Đang xử lý với Groq AI... Vui lòng đợi (10-30 giây)</p>
         </div>
         
         <div class="error" id="error"></div>
@@ -631,16 +638,12 @@
                         <input type="text" id="referenceLink" name="reference_link_url" placeholder="https://example.com/reference">
                         <div class="helper-text">Link tham khảo cho tất cả câu hỏi (cột reference_link_url)</div>
                     </div>
-                    
-                    <div class="info-box" style="margin-top: 15px;">
-                        <strong>ℹ️ Lưu ý:</strong> Question Text sẽ tự động được trích xuất từ file Word
-                    </div>
                 </div>
             </div>
             
             <div class="modal-footer">
                 <button onclick="closeMetadataModal()" style="background: #6c757d;">Đóng</button>
-                <button onclick="saveMetadata()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">💾 Lưu thay đổi</button>
+                <button onclick="saveMetadata()">💾 Lưu thay đổi</button>
             </div>
         </div>
     </div>
@@ -658,14 +661,12 @@
         }
         
         function switchTab(tabName) {
-            // Hide all tabs
             const tabs = document.querySelectorAll('.tab');
             const tabContents = document.querySelectorAll('.tab-content');
             
             tabs.forEach(tab => tab.classList.remove('active'));
             tabContents.forEach(content => content.classList.remove('active'));
             
-            // Show selected tab
             event.target.classList.add('active');
             document.getElementById(tabName + 'Tab').classList.add('active');
         }
@@ -679,7 +680,6 @@
             }, 2000);
         }
         
-        // Close modal when clicking outside
         window.onclick = function(event) {
             const modal = document.getElementById('metadataModal');
             if (event.target === modal) {
@@ -696,7 +696,6 @@
         const loadingText = document.getElementById('loadingText');
         const errorDiv = document.getElementById('error');
         const successDiv = document.getElementById('success');
-        const apiProviderSelect = document.getElementById('apiProvider');
         const apiKeyInput = document.getElementById('apiKey');
         
         // Metadata inputs
@@ -711,21 +710,6 @@
         const questionHashtagInput = document.getElementById('questionHashtag');
         const referenceLinkInput = document.getElementById('referenceLink');
         const previewBox = document.getElementById('previewBox');
-        
-        // Update API key placeholder
-        apiProviderSelect.addEventListener('change', function() {
-            const provider = this.value;
-            if (provider === 'groq') {
-                apiKeyInput.placeholder = 'gsk_... (Groq API key)';
-            } else if (provider === 'gemini') {
-                apiKeyInput.placeholder = 'AIza... (Gemini API key)';
-            } else {
-                apiKeyInput.placeholder = 'sk-... (OpenAI API key)';
-            }
-        });
-        
-        // Set initial placeholder for Groq
-        apiKeyInput.placeholder = 'gsk_... (Groq API key)';
         
         // Show file info
         fileInput.addEventListener('change', function(e) {
@@ -743,7 +727,7 @@
             }
         });
         
-        // Update preview on input change
+        // Update preview
         function updatePreview() {
             const testName = testNameInput.value.trim() || 'AUTO (từ Word)';
             const testCategory = testCategoryInput.value.trim() || testName;
@@ -774,7 +758,6 @@
             previewBox.style.display = 'block';
         }
         
-        // Add event listeners for preview update
         [testNameInput, testCategoryInput, testHashtagInput, testCostInput,
          topicNameInput, topicCategoryInput, topicHashtagInput, questionCategoryInput, questionHashtagInput]
             .forEach(input => {
@@ -782,14 +765,12 @@
                 input.addEventListener('change', updatePreview);
             });
         
-        // Initial preview
         updatePreview();
         
         // Handle form submit
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            // Reset messages
             errorDiv.style.display = 'none';
             successDiv.style.display = 'none';
             
@@ -797,9 +778,7 @@
             const file = fileInput.files[0];
             const apiKey = apiKeyInput.value.trim();
             const language = document.getElementById('language').value;
-            const apiProvider = apiProviderSelect.value;
             
-            // Validate
             if (!file) {
                 showError('Vui lòng chọn file Word!');
                 return;
@@ -810,25 +789,14 @@
                 return;
             }
             
-            // Validate API key format
-            if (apiProvider === 'openai' && !apiKey.startsWith('sk-')) {
-                showError('OpenAI API key phải bắt đầu bằng "sk-"');
-                return;
-            }
-            if (apiProvider === 'groq' && !apiKey.startsWith('gsk_')) {
+            if (!apiKey.startsWith('gsk_')) {
                 showError('Groq API key phải bắt đầu bằng "gsk_"');
                 return;
             }
-            if (apiProvider === 'gemini' && !apiKey.startsWith('AIza')) {
-                showError('Gemini API key phải bắt đầu bằng "AIza"');
-                return;
-            }
             
-            // Append all form data
             formData.append('file', file);
             formData.append('api_key', apiKey);
             formData.append('language', language);
-            formData.append('api_provider', apiProvider);
             formData.append('test_name', testNameInput.value.trim());
             formData.append('test_category', testCategoryInput.value.trim());
             formData.append('test_hashtag', testHashtagInput.value.trim());
@@ -840,11 +808,10 @@
             formData.append('question_hashtag', questionHashtagInput.value.trim());
             formData.append('reference_link_url', referenceLinkInput.value.trim());
             
-            // Show loading
             submitBtn.disabled = true;
             submitBtn.textContent = '⏳ Đang xử lý...';
             loading.style.display = 'block';
-            loadingText.textContent = `Đang phân tích với ${apiProvider === 'groq' ? 'Groq' : apiProvider === 'gemini' ? 'Gemini' : 'OpenAI'}... Vui lòng đợi (10-30 giây)`;
+            loadingText.textContent = 'Đang phân tích với Groq AI... Vui lòng đợi (10-30 giây)';
             
             try {
                 const response = await fetch('/convert', {
@@ -857,9 +824,8 @@
                     throw new Error(error.detail || 'Lỗi không xác định');
                 }
                 
-                // Download file
                 const blob = await response.blob();
-                const defaultName = file.name.replace('.docx', `_converted_${language}.xlsx`);
+                const defaultName = file.name.replace('.docx', `_converted_${language}.csv`);
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
@@ -869,7 +835,7 @@
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(a);
                 
-                showSuccess(`✅ Chuyển đổi thành công! File đã tải xuống: ${defaultName}`);
+                showSuccess(`✅ Chuyển đổi thành công!\n\nFile đã tải xuống: ${defaultName}\n\n💡 Mở file CSV bằng Excel hoặc Google Sheets`);
                 
             } catch (error) {
                 showError('❌ ' + error.message);
@@ -881,13 +847,13 @@
         });
         
         function showError(message) {
-            errorDiv.innerHTML = message;
+            errorDiv.textContent = message;
             errorDiv.style.display = 'block';
             window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
         }
         
         function showSuccess(message) {
-            successDiv.innerHTML = message;
+            successDiv.textContent = message;
             successDiv.style.display = 'block';
             setTimeout(() => {
                 successDiv.style.display = 'none';

@@ -1,22 +1,21 @@
 """
-FastAPI App: Word to Excel Converter v3.1
-Fixed: Hỗ trợ nhiều format câu hỏi (Brand Health + Customer Experience)
+FastAPI App: Word to Excel Converter - Vercel Optimized
+Only Groq API - Minimal dependencies
+NO python-docx, NO pandas, NO openpyxl
 """
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import StreamingResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-import docx
-import pandas as pd
 import json
 import io
 import re
-from openai import OpenAI
 from groq import Groq
-import google.generativeai as genai
 import traceback
+from zipfile import ZipFile
+from xml.etree import ElementTree as ET
 
-app = FastAPI(title="Word to Excel Converter v3.1")
+app = FastAPI(title="Word to Excel Converter - Groq")
 
 # Enable CORS
 app.add_middleware(
@@ -31,39 +30,55 @@ MAX_FILE_SIZE = 4.5 * 1024 * 1024  # 4.5MB
 
 
 def extract_text_from_docx(file_content: bytes) -> str:
-    """Trích xuất text và bảng từ file .docx"""
+    """Extract text from .docx using zipfile (no python-docx needed)"""
     try:
-        doc = docx.Document(io.BytesIO(file_content))
-        extracted_text = []
+        text_parts = []
         
-        for para in doc.paragraphs:
-            if para.text.strip():
-                extracted_text.append(para.text)
+        with ZipFile(io.BytesIO(file_content)) as docx:
+            # Extract main document
+            xml_content = docx.read('word/document.xml')
+            tree = ET.fromstring(xml_content)
+            
+            # Namespace
+            ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+            
+            # Extract paragraphs
+            for para in tree.findall('.//w:p', ns):
+                texts = []
+                for text in para.findall('.//w:t', ns):
+                    if text.text:
+                        texts.append(text.text)
+                if texts:
+                    text_parts.append(''.join(texts))
+            
+            # Extract tables
+            for table in tree.findall('.//w:tbl', ns):
+                text_parts.append("\n=== TABLE ===")
+                for row in table.findall('.//w:tr', ns):
+                    cells = []
+                    for cell in row.findall('.//w:tc', ns):
+                        cell_texts = []
+                        for text in cell.findall('.//w:t', ns):
+                            if text.text:
+                                cell_texts.append(text.text)
+                        cells.append(''.join(cell_texts).strip())
+                    text_parts.append(" | ".join(cells))
+                text_parts.append("=== END TABLE ===\n")
         
-        for table in doc.tables:
-            extracted_text.append("\n=== TABLE ===")
-            for row in table.rows:
-                row_data = [cell.text.strip() for cell in row.cells]
-                extracted_text.append(" | ".join(row_data))
-            extracted_text.append("=== END TABLE ===\n")
-        
-        return "\n".join(extracted_text)
+        return "\n".join(text_parts)
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Lỗi đọc file Word: {str(e)}")
 
 
 def detect_structure(text: str) -> dict:
-    """
-    Phát hiện số câu hỏi, topics và tên test từ Word
-    FIXED: Hỗ trợ nhiều format câu hỏi
-    """
-    # ĐẾM CÂU HỎI - Hỗ trợ nhiều pattern
+    """Phát hiện số câu hỏi và tên test"""
+    # Đếm câu hỏi
     question_patterns = [
-        r'^\s*\*?\*?\s*(\d+)\.\s+.+\?',  # Format: **1. Câu hỏi?**
-        r'###\s*\*?\*?\s*Câu\s+(\d+):',  # Format: ### **Câu 1:**
-        r'^\s*Câu\s+(\d+)[:：]',          # Format: Câu 1: hoặc Câu 1：
-        r'^\s*Question\s+(\d+)[:：]',     # Format: Question 1:
+        r'^\s*\*?\*?\s*(\d+)\.\s+.+\?',
+        r'###\s*\*?\*?\s*Câu\s+(\d+):',
+        r'^\s*Câu\s+(\d+)[:：]',
+        r'^\s*Question\s+(\d+)[:：]',
     ]
     
     all_question_numbers = []
@@ -72,14 +87,12 @@ def detect_structure(text: str) -> dict:
         if matches:
             all_question_numbers.extend([int(m) for m in matches])
     
-    # Loại bỏ trùng lặp và đếm số câu hỏi duy nhất
     unique_questions = sorted(set(all_question_numbers))
     num_questions = len(unique_questions) if unique_questions else 20
     
-    print(f"✓ Detected question numbers: {unique_questions}")
-    print(f"✓ Total unique questions: {num_questions}")
+    print(f"✓ Detected {num_questions} questions")
     
-    # ĐẾM TOPICS
+    # Đếm topics
     topic_patterns = [
         r'Phần\s+(\d+)\.',
         r'Part\s+(\d+)\.',
@@ -95,50 +108,40 @@ def detect_structure(text: str) -> dict:
     unique_topics = sorted(set(all_topic_numbers))
     num_topics = len(unique_topics) if unique_topics else 6
     
-    print(f"✓ Detected topics: {unique_topics}")
-    print(f"✓ Total topics: {num_topics}")
-    
-    # TRÍCH XUẤT TÊN TEST
+    # Trích xuất tên test
     test_name_patterns = [
         r'(?:\*\*)?Bài\s+Test\s+Đánh\s+giá\s+(.+?)(?:\*\*|\(|$)',
         r'(?:\*\*)?Bài\s+Kiểm\s+Tra\s+(.+?)(?:\*\*|\(|\n)',
         r'(?:\*\*)?(.+?Test.*?Đánh\s+giá.*?)(?:\*\*|\(|\n)',
-        r'(?:\*\*)?Bài\s+Test\s+(.+?)(?:\*\*|\(|$)',
         r'(?:\*\*)?(.+?)\s+(?:Check|Assessment|Health\s+Check)(?:\*\*|\s+\(|\n|$)',
-        r'^(?:\*\*)?(.+?Test.+?)(?:\*\*|\n)',
-        r'^\*\*(.+?)\*\*',
     ]
     
     detected_test_name = None
-    lines = text.split('\n')[:15]  # Xem 15 dòng đầu
+    lines = text.split('\n')[:15]
     
     for line in lines:
         line = line.strip()
         if not line or len(line) < 5:
             continue
-            
+        
         for pattern in test_name_patterns:
             match = re.search(pattern, line, re.IGNORECASE)
             if match:
                 detected_test_name = match.group(1).strip()
-                # Clean up
                 detected_test_name = re.sub(r'\*+', '', detected_test_name)
                 detected_test_name = re.sub(r'\[.*?\]', '', detected_test_name)
                 detected_test_name = re.sub(r'\(.*?\)', '', detected_test_name)
                 detected_test_name = detected_test_name.strip()
                 
-                # Kiểm tra độ dài hợp lý
                 if 5 <= len(detected_test_name) <= 100:
-                    print(f"✓ Detected test name: '{detected_test_name}' from line: '{line[:80]}'")
+                    print(f"✓ Detected test name: '{detected_test_name}'")
                     break
         
         if detected_test_name:
             break
     
-    # Fallback
     if not detected_test_name:
         detected_test_name = 'Business Assessment'
-        print(f"⚠ Could not detect test name, using fallback: '{detected_test_name}'")
     
     return {
         'num_questions': num_questions,
@@ -147,12 +150,9 @@ def detect_structure(text: str) -> dict:
     }
 
 
-def analyze_with_llm(text: str, api_key: str, language: str, 
-                     api_provider: str, structure: dict, metadata: dict) -> list:
-    """
-    Sử dụng LLM để phân tích và chuyển đổi
-    FIXED: Prompt được cải thiện để xử lý nhiều format
-    """
+def analyze_with_groq(text: str, api_key: str, language: str, 
+                      structure: dict, metadata: dict) -> list:
+    """Sử dụng Groq để phân tích"""
     try:
         num_questions = structure['num_questions']
         
@@ -171,28 +171,28 @@ def analyze_with_llm(text: str, api_key: str, language: str,
                     'num_topics': structure['num_topics']
                 }
                 
-                batch_data = _call_llm_api(
-                    text, api_key, language, api_provider, 
+                batch_data = _call_groq_api(
+                    text, api_key, language, 
                     batch_structure, metadata, i+1
                 )
                 all_data.extend(batch_data)
             
             return all_data[:num_questions]
         else:
-            return _call_llm_api(
-                text, api_key, language, api_provider, 
+            return _call_groq_api(
+                text, api_key, language, 
                 structure, metadata, 1
             )
     
     except Exception as e:
-        error_msg = f"Lỗi gọi {api_provider} API: {str(e)}\n{traceback.format_exc()}"
+        error_msg = f"Lỗi gọi Groq API: {str(e)}\n{traceback.format_exc()}"
         print(error_msg)
         raise HTTPException(status_code=500, detail=error_msg)
 
 
-def _call_llm_api(text: str, api_key: str, language: str, api_provider: str,
-                  structure: dict, metadata: dict, start_question: int = 1) -> list:
-    """Helper function gọi LLM API - FIXED prompt"""
+def _call_groq_api(text: str, api_key: str, language: str,
+                   structure: dict, metadata: dict, start_question: int = 1) -> list:
+    """Call Groq API"""
     num_questions = structure['num_questions']
     lang_full = 'Vietnamese' if language == 'vi' else 'English'
     detected_test_name = structure.get('detected_test_name', 'Business Assessment')
@@ -201,7 +201,7 @@ def _call_llm_api(text: str, api_key: str, language: str, api_provider: str,
     test_name = metadata.get('test_name') or detected_test_name
     test_category = metadata.get('test_category') or test_name
     
-    # Tạo hashtag từ tên nếu không có
+    # Tạo hashtag
     def make_hashtag(name: str) -> str:
         hashtag = re.sub(r'[^\w\s]', '', name.lower())
         hashtag = re.sub(r'\s+', '_', hashtag)
@@ -214,8 +214,6 @@ def _call_llm_api(text: str, api_key: str, language: str, api_provider: str,
         test_hashtag = make_hashtag(test_name)
     
     test_cost = metadata.get('test_cost', '0')
-    
-    # Topic metadata
     topic_name = metadata.get('topic_name') or test_name
     topic_category = metadata.get('topic_category') or test_category
     topic_hashtag = metadata.get('topic_hashtag')
@@ -224,7 +222,6 @@ def _call_llm_api(text: str, api_key: str, language: str, api_provider: str,
     if not topic_hashtag:
         topic_hashtag = test_hashtag
     
-    # Question metadata
     question_category = metadata.get('question_category') or test_category
     question_hashtag = metadata.get('question_hashtag')
     if question_hashtag and not question_hashtag.startswith('#'):
@@ -232,16 +229,11 @@ def _call_llm_api(text: str, api_key: str, language: str, api_provider: str,
     if not question_hashtag:
         question_hashtag = test_hashtag
     
-    # Reference link
     reference_link = metadata.get('reference_link_url', '')
     
-    # Default comments
-    if language == 'vi':
-        default_good = "Đã làm tốt!"
-    else:
-        default_good = "Well done!"
+    default_good = "Đã làm tốt!" if language == 'vi' else "Well done!"
     
-    # Lấy phần text liên quan - MỞ RỘNG để bao gồm cả text trước câu hỏi
+    # Lấy phần text liên quan
     question_patterns = [
         rf'^\s*\*?\*?\s*{start_question}\.\s+',
         rf'###\s*\*?\*?\s*Câu\s+{start_question}:',
@@ -252,52 +244,44 @@ def _call_llm_api(text: str, api_key: str, language: str, api_provider: str,
     for pattern in question_patterns:
         match = re.search(pattern, text, re.MULTILINE)
         if match:
-            # Lấy từ vị trí này đến hết, MỞ RỘNG HƠN để đủ 5 đáp án
             start_pos = max(0, match.start() - 800)
-            relevant_text = text[start_pos:][:18000]  # Tăng lên 18000 ký tự cho đủ 5 answers
+            relevant_text = text[start_pos:][:18000]
             break
     
     if not relevant_text:
         relevant_text = text[:18000]
     
-    # IMPROVED PROMPT - Hỗ trợ nhiều format
     english_instruction = ""
     if language == 'en':
         english_instruction = """
-  * SPECIAL FOR ENGLISH: Extract ONLY the English terms in parentheses from the reading suggestions
-  * Example: "Nhận diện thương hiệu (Brand Identity), Sự nhất quán thương hiệu (Brand Consistency)" → Extract: "Brand Identity, Brand Consistency"
-  * Remove all Vietnamese text, keep only English terms separated by commas
-  * If a term has no parentheses (like "Brand Recognition"), keep it as is
-  * PRESERVE line breaks between bullet points using \\n"""
+  * SPECIAL FOR ENGLISH: Extract ONLY the English terms in parentheses
+  * Example: "Nhận diện thương hiệu (Brand Identity)" → Extract: "Brand Identity"
+  * Remove all Vietnamese text, keep only English terms
+  * PRESERVE line breaks using \\n"""
     else:
         english_instruction = """
-  * FOR VIETNAMESE: Keep the full text including both Vietnamese and English parts
-  * PRESERVE line breaks between bullet points using \\n"""
+  * FOR VIETNAMESE: Keep the full text
+  * PRESERVE line breaks using \\n"""
     
     prompt = f"""
 Analyze the Word document and extract questions {start_question} to {start_question + num_questions - 1}.
 
 CRITICAL: Return ONLY a pure JSON array [ ... ] with NO markdown, NO text.
 
-IMPORTANT - QUESTION DETECTION:
-- Questions may appear in various formats:
-  * "**1. Question text?**"
-  * "### **Câu 1: Question text?**"
-  * "Câu 1: Question text?"
-  * "Question 1: Question text?"
-- Extract the COMPLETE question text regardless of format
-- Question numbers must be sequential: {start_question}, {start_question+1}, {start_question+2}, etc.
-- IMPORTANT: Remove ALL emojis and icons (🔹, 📌, ✅, etc.) from question text
+QUESTION DETECTION:
+- Questions may appear as: "**1. Question?**", "### **Câu 1:**", "Câu 1:", "Question 1:"
+- Extract COMPLETE question text
+- Question numbers: {start_question}, {start_question+1}, {start_question+2}, etc.
+- Remove ALL emojis and icons from question text
 
-CRITICAL - ANSWER EXTRACTION:
+ANSWER EXTRACTION:
 - Each question may have 3, 4, or 5 answers (A, B, C, D, E)
-- ALWAYS check for ALL 5 possible answers before moving to next question
+- ALWAYS check for ALL 5 possible answers
 - Look for patterns: "1.", "2.", "3.", "4.", "5." OR "A.", "B.", "C.", "D.", "E."
-- If only 3 answers exist, leave answer4_text and answer5_text as empty strings
-- If 4 answers exist, leave answer5_text as empty string
-- If 5 answers exist, fill ALL answer fields (answer1-5)
-- DO NOT stop at answer3 if answer4 and answer5 exist in the document
-- IMPORTANT: Remove ALL emojis and icons (✅, 🔹, 📌, etc.) from answer text
+- If only 3 answers: leave answer4_text and answer5_text empty
+- If 4 answers: leave answer5_text empty
+- If 5 answers: fill ALL answer fields
+- Remove ALL emojis from answer text
 
 Each object must have ALL 31 keys:
 {{
@@ -335,110 +319,56 @@ Each object must have ALL 31 keys:
 }}
 
 RULES:
-- ALL metadata values are provided above
-- Extract COMPLETE question_text in {lang_full}, handle all formats
-- Look for answers marked with numbers or letters
-- For 5-answer questions: Classify as "improve" (1-worst), "review" (2), "review" (3), "good" (4), "good" (5-best)
-- For 3-answer questions: Classify as "improve" (A-weak), "review" (B-moderate), "good" (C-strong)
-- good_comment is ALWAYS: "{default_good}"
-- reference_link_url is ALWAYS: "{reference_link}"
-- improve_comment and read_more_comment MUST BE IDENTICAL, extracted from reading suggestions:
-  * Look for: "📌 Gợi ý đọc thêm:", "📖 **Gợi ý đọc thêm:**", "**Gợi ý tìm hiểu thêm:**"
-  * Extract everything after this marker until the next question starts{english_instruction}
-  * CRITICAL: Preserve line breaks between bullet points - use \\n for line breaks
-  * Example input: "- Item 1\\n- Item 2\\n- Item 3"
-  * If bullet points start with "-" or "•", keep them and add \\n after each item
-  * IMPORTANT: DO NOT include any emojis, icons, or special symbols (📌, 📖, ✅, 🔹, etc.) in the extracted text
-  * Remove all emojis and icons from the extracted content
-  * SEARCH CAREFULLY between last answer and the next question
-  * If not found, use "" for both fields
-- Empty strings for unused answer fields and all *_created_at/*_updated_at fields
+- Extract COMPLETE question_text in {lang_full}
+- For 5 answers: "improve" (1-worst), "review" (2), "review" (3), "good" (4), "good" (5-best)
+- For 3 answers: "improve" (A-weak), "review" (B-moderate), "good" (C-strong)
+- good_comment: "{default_good}"
+- reference_link_url: "{reference_link}"
+- improve_comment and read_more_comment: Extract from reading suggestions
+  * Look for: "📌 Gợi ý đọc thêm:", "📖 **Gợi ý đọc thêm:**", "**Gợi ý tìm hiểu thêm:**"{english_instruction}
+  * Remove emojis and icons
+  * If not found, use ""
+- Empty strings for unused answers and *_created_at/*_updated_at
 
-Text to analyze:
+Text:
 {relevant_text}
 """
     
-    # Tính max_tokens - tăng lên cho 5 answers
-    estimated_tokens = num_questions * 800 + 1500  # Tăng từ 600 lên 800 tokens/câu
+    estimated_tokens = num_questions * 800 + 1500
     max_tokens = min(estimated_tokens, 16000)
     
     print(f"Requesting {max_tokens} tokens for {num_questions} questions")
     
-    # Gọi API
     try:
-        if api_provider == 'gemini':
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            generation_config = {
-                'temperature': 0.1,
-                'max_output_tokens': max_tokens,
-            }
-            response = model.generate_content(prompt, generation_config=generation_config)
-            result_text = response.text.strip()
-            
-        elif api_provider == 'groq':
-            client = Groq(api_key=api_key)
-            response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[
-                    {"role": "system", "content": "Return ONLY valid, complete JSON array."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.1,
-                max_tokens=max_tokens
-            )
-            result_text = response.choices[0].message.content.strip()
-            
-        else:  # openai
-            client = OpenAI(api_key=api_key)
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "Return ONLY valid, complete JSON array."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.1,
-                max_tokens=max_tokens
-            )
-            result_text = response.choices[0].message.content.strip()
+        client = Groq(api_key=api_key)
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": "Return ONLY valid, complete JSON array."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.1,
+            max_tokens=max_tokens
+        )
+        result_text = response.choices[0].message.content.strip()
     
     except Exception as api_error:
         error_msg = str(api_error)
         
-        # Xử lý rate limit errors
         if 'rate_limit' in error_msg.lower() or '429' in error_msg:
-            if api_provider == 'groq':
-                raise ValueError(
-                    "❌ Groq API đã hết quota (100k tokens/ngày). "
-                    "Giải pháp:\n"
-                    "1. Đợi 34 phút để reset quota\n"
-                    "2. HOẶC chuyển sang Gemini (miễn phí, không giới hạn) - Khuyên dùng!\n"
-                    "3. HOẶC nâng cấp Groq lên Dev Tier tại: https://console.groq.com/settings/billing\n"
-                    "4. HOẶC dùng OpenAI (trả phí nhưng ổn định)"
-                )
-            elif api_provider == 'gemini':
-                raise ValueError(
-                    "❌ Gemini API đã hết quota. "
-                    "Giải pháp:\n"
-                    "1. Tạo API key mới tại: https://aistudio.google.com/app/apikey\n"
-                    "2. HOẶC chuyển sang Groq (miễn phí)\n"
-                    "3. HOẶC dùng OpenAI (trả phí)"
-                )
-            else:
-                raise ValueError(
-                    "❌ OpenAI API đã hết quota hoặc credit. "
-                    "Giải pháp:\n"
-                    "1. Nạp thêm credit tại: https://platform.openai.com/account/billing\n"
-                    "2. HOẶC chuyển sang Gemini (miễn phí, không giới hạn) - Khuyên dùng!\n"
-                    "3. HOẶC chuyển sang Groq (miễn phí)"
-                )
+            raise ValueError(
+                "❌ Groq API đã hết quota (100k tokens/ngày). "
+                "Giải pháp:\n"
+                "1. Đợi 34 phút để reset quota\n"
+                "2. HOẶC nâng cấp Groq lên Dev Tier tại: https://console.groq.com/settings/billing\n"
+                "3. HOẶC tạo API key mới tại: https://console.groq.com/keys"
+            )
         
-        raise ValueError(f"❌ Lỗi gọi {api_provider} API: {error_msg}")
+        raise ValueError(f"❌ Lỗi gọi Groq API: {error_msg}")
     
     # Xử lý JSON
     result_text = result_text.strip()
     
-    # Remove markdown
     if result_text.startswith("```json"):
         result_text = result_text[7:].strip()
     if result_text.startswith("```"):
@@ -457,7 +387,6 @@ Text to analyze:
         else:
             raise ValueError("JSON bị cắt và không thể sửa. Thử giảm số câu hỏi.")
     
-    # Parse JSON
     try:
         data = json.loads(result_text)
     except json.JSONDecodeError as je:
@@ -469,46 +398,33 @@ Text to analyze:
     if not isinstance(data, list) or not data:
         raise ValueError("AI trả về dữ liệu không hợp lệ")
     
-    # Post-process: Đảm bảo line breaks và loại bỏ icons/emojis
-    for item in data:
-        # Hàm loại bỏ emojis và icons
-        def remove_emojis(text):
-            if not text:
-                return text
-            # Remove emojis, icons, và special symbols
-            import re
-            # Pattern loại bỏ emojis và icons Unicode
-            emoji_pattern = re.compile(
-                "["
-                u"\U0001F600-\U0001F64F"  # emoticons
-                u"\U0001F300-\U0001F5FF"  # symbols & pictographs
-                u"\U0001F680-\U0001F6FF"  # transport & map symbols
-                u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
-                u"\U00002702-\U000027B0"  # dingbats
-                u"\U000024C2-\U0001F251"
-                u"\U0001F900-\U0001F9FF"  # Supplemental Symbols and Pictographs
-                u"\U0001FA00-\U0001FA6F"  # Chess Symbols
-                u"\U00002600-\U000026FF"  # Miscellaneous Symbols
-                u"\U00002700-\U000027BF"  # Dingbats
-                "]+", flags=re.UNICODE
-            )
-            text = emoji_pattern.sub('', text)
-            
-            # Loại bỏ các ký tự đặc biệt như 📌, 📖, ✅, 🔹, etc.
-            text = re.sub(r'[📌📖✅🔹💡⚠️✓❌🎯🚀📊📈📉💰🎪🌐⭐🔥💪👍]', '', text)
-            
-            # Loại bỏ khoảng trắng thừa
-            text = re.sub(r'\s+', ' ', text).strip()
-            
+    # Post-process: Remove emojis
+    def remove_emojis(text):
+        if not text:
             return text
-        
-        # Áp dụng cho tất cả các trường text
+        emoji_pattern = re.compile(
+            "["
+            u"\U0001F600-\U0001F64F"
+            u"\U0001F300-\U0001F5FF"
+            u"\U0001F680-\U0001F6FF"
+            u"\U0001F1E0-\U0001F1FF"
+            u"\U00002702-\U000027B0"
+            u"\U000024C2-\U0001F251"
+            u"\U0001F900-\U0001F9FF"
+            u"\U0001FA00-\U0001FA6F"
+            u"\U00002600-\U000026FF"
+            u"\U00002700-\U000027BF"
+            "]+", flags=re.UNICODE
+        )
+        text = emoji_pattern.sub('', text)
+        text = re.sub(r'[📌📖✅📹💡⚠️✔❌🎯🚀📊📈📉💰🎪🌐⭐🔥💪🔝]', '', text)
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text
+    
+    for item in data:
         for key in item.keys():
             if isinstance(item[key], str) and item[key]:
-                # Loại bỏ emojis
                 item[key] = remove_emojis(item[key])
-                
-                # Xử lý line breaks cho improve_comment và read_more_comment
                 if key in ['improve_comment', 'read_more_comment']:
                     item[key] = item[key].replace('\\n', '\n')
     
@@ -516,16 +432,14 @@ Text to analyze:
     return data
 
 
-def convert_json_to_excel(data: list) -> bytes:
-    """Chuyển đổi JSON sang Excel"""
+def convert_json_to_csv(data: list) -> bytes:
+    """Convert JSON to CSV (lighter than Excel)"""
     try:
         if not data or not isinstance(data, list):
             raise ValueError("Dữ liệu không hợp lệ")
         
-        df = pd.DataFrame(data)
-        
-        # 31 cột chuẩn
-        required_columns = [
+        # 31 columns
+        columns = [
             "language", "test_name", "test_category", "test_hashtag",
             "test_created_at", "test_updated_at", "test_cost",
             "topic_name", "topic_category", "topic_hashtag",
@@ -539,65 +453,24 @@ def convert_json_to_excel(data: list) -> bytes:
             "reference_link_url"
         ]
         
-        # Thêm cột thiếu
-        for col in required_columns:
-            if col not in df.columns:
-                df[col] = ""
+        # Create CSV
+        output = io.StringIO()
         
-        # Sắp xếp lại cột
-        df = df[required_columns]
+        # Write header
+        output.write(','.join(f'"{col}"' for col in columns) + '\n')
         
-        # Chuyển test_cost sang dạng số
-        def convert_to_number(value):
-            """Chuyển đổi giá trị sang số"""
-            if pd.isna(value) or value == '' or value is None:
-                return 0
-            try:
-                # Loại bỏ dấu phẩy, khoảng trắng và chuyển sang float
-                cleaned = str(value).replace(',', '').replace(' ', '').strip()
-                return float(cleaned) if cleaned else 0
-            except:
-                return 0
+        # Write rows
+        for row in data:
+            values = []
+            for col in columns:
+                value = str(row.get(col, '')).replace('"', '""')  # Escape quotes
+                values.append(f'"{value}"')
+            output.write(','.join(values) + '\n')
         
-        df['test_cost'] = df['test_cost'].apply(convert_to_number)
-        
-        # Tạo Excel
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Questions')
-            
-            # Auto-adjust column width và enable text wrap
-            worksheet = writer.sheets['Questions']
-            from openpyxl.styles import Alignment
-            
-            for idx, col in enumerate(required_columns):
-                if len(df) > 0:
-                    max_length = max(
-                        df[col].astype(str).apply(len).max(),
-                        len(col)
-                    )
-                else:
-                    max_length = len(col)
-                
-                col_letter = ''
-                num = idx + 1
-                while num > 0:
-                    num -= 1
-                    col_letter = chr(65 + (num % 26)) + col_letter
-                    num //= 26
-                worksheet.column_dimensions[col_letter].width = min(max_length + 2, 50)
-                
-                # Enable text wrap cho improve_comment và read_more_comment
-                if col in ['improve_comment', 'read_more_comment']:
-                    for row in range(2, len(df) + 2):  # Start from row 2 (skip header)
-                        cell = worksheet[f'{col_letter}{row}']
-                        cell.alignment = Alignment(wrap_text=True, vertical='top')
-        
-        output.seek(0)
-        return output.getvalue()
+        return output.getvalue().encode('utf-8-sig')  # UTF-8 with BOM for Excel
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Lỗi tạo Excel: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Lỗi tạo CSV: {str(e)}")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -611,19 +484,18 @@ async def home():
         return HTMLResponse(content="""
         <html>
             <body>
-                <h1>Error: Template not found</h1>
-                <p>Please create templates/index.html file</p>
+                <h1>Word to CSV Converter - Groq</h1>
+                <p>Error: Template file not found. Please create templates/index.html</p>
             </body>
         </html>
         """, status_code=404)
 
 
 @app.post("/convert")
-async def convert_word_to_excel(
+async def convert_word_to_csv(
     file: UploadFile = File(...),
     api_key: str = Form(...),
     language: str = Form('vi'),
-    api_provider: str = Form('groq'),
     test_name: str = Form(''),
     test_category: str = Form(''),
     test_hashtag: str = Form(''),
@@ -635,9 +507,8 @@ async def convert_word_to_excel(
     question_hashtag: str = Form(''),
     reference_link_url: str = Form('')
 ):
-    """Convert Word to Excel với metadata tùy chỉnh"""
+    """Convert Word to CSV with Groq"""
     
-    # Validate
     if not file.filename.endswith('.docx'):
         raise HTTPException(status_code=400, detail="Chỉ chấp nhận file .docx")
     
@@ -649,7 +520,9 @@ async def convert_word_to_excel(
     if not api_key or len(api_key) < 20:
         raise HTTPException(status_code=400, detail="API key không hợp lệ")
     
-    # Chuẩn bị metadata
+    if not api_key.startswith('gsk_'):
+        raise HTTPException(status_code=400, detail='Groq API key phải bắt đầu bằng "gsk_"')
+    
     metadata = {
         'test_name': test_name.strip(),
         'test_category': test_category.strip(),
@@ -664,47 +537,37 @@ async def convert_word_to_excel(
     }
     
     try:
-        # Bước 1: Trích xuất text
         print("=" * 80)
         print(f"Processing file: {file.filename}")
-        print("=" * 80)
+        
         text = extract_text_from_docx(file_content)
         
         if not text.strip():
             raise HTTPException(status_code=400, detail="File Word không có nội dung")
         
-        # Debug
-        print("\nFIRST 800 CHARS FROM WORD:")
-        print(text[:800])
-        print("=" * 80)
+        print(f"\nFirst 800 chars:\n{text[:800]}\n")
         
-        # Bước 2: Phát hiện cấu trúc
-        print("\nDetecting structure...")
         structure = detect_structure(text)
         print(f"✓ Structure: {structure['num_questions']} questions, {structure['num_topics']} topics")
-        print(f"✓ Test name: '{structure.get('detected_test_name')}'")
         
-        # Bước 3: Phân tích với LLM
-        print(f"\nAnalyzing with {api_provider}...")
-        structured_data = analyze_with_llm(
-            text, api_key, language, api_provider, structure, metadata
+        print("\nAnalyzing with Groq...")
+        structured_data = analyze_with_groq(
+            text, api_key, language, structure, metadata
         )
         
-        print(f"✓ Got {len(structured_data)} questions from LLM")
+        print(f"✓ Got {len(structured_data)} questions")
         
-        # Bước 4: Tạo Excel
-        print("\nCreating Excel...")
-        excel_content = convert_json_to_excel(structured_data)
+        print("\nCreating CSV...")
+        csv_content = convert_json_to_csv(structured_data)
         
-        # Output filename
-        output_filename = file.filename.replace('.docx', f'_converted_{language}.xlsx')
+        output_filename = file.filename.replace('.docx', f'_converted_{language}.csv')
         
         print(f"✓ Success! Output: {output_filename}")
         print("=" * 80)
         
         return StreamingResponse(
-            io.BytesIO(excel_content),
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            io.BytesIO(csv_content),
+            media_type="text/csv",
             headers={
                 "Content-Disposition": f"attachment; filename={output_filename}"
             }
@@ -723,10 +586,10 @@ async def health_check():
     """Health check"""
     return {
         "status": "healthy",
-        "version": "3.1",
-        "features": ["multi_format_support", "custom_metadata", "auto_detect", "3_providers"]
+        "version": "3.2-vercel-optimized",
+        "features": ["groq_only", "minimal_deps", "csv_output"]
     }
 
 
-# Handler cho Vercel deployment
+# Vercel handler
 handler = app
