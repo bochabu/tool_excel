@@ -2,7 +2,5 @@ fastapi
 uvicorn
 python-multipart
 python-docx
-openai
 groq
-google-generativeai
 openpyxl  # Thay pandas để write Excel nhẹ hơn
