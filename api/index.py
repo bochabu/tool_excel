@@ -608,7 +608,7 @@ def convert_json_to_excel(data: list) -> bytes:
 async def home():
     """Serve HTML interface"""
     try:
-        with open("index.html", "r", encoding="utf-8") as f:
+        with open("templates/index.html", "r", encoding="utf-8") as f:
             html_content = f.read()
         return HTMLResponse(content=html_content)
     except FileNotFoundError:

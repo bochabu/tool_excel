@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word → Excel Converter v3 - Custom Metadata</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .version-badge {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 15px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 15px;
+            line-height: 1.8;
+        }
+        
+        .section-title {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            margin: 30px 0 20px 0;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        label .optional {
+            color: #999;
+            font-weight: 400;
+            font-size: 12px;
+        }
+        
+        input[type="file"],
+        input[type="password"],
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .helper-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            line-height: 1.4;
+        }
+        
+        .info-box {
+            background: #f0f8ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+        
+        .info-box strong {
+            color: #667eea;
+        }
+        
+        .info-box ul {
+            margin: 10px 0 0 20px;
+        }
+        
+        .info-box li {
+            margin-bottom: 5px;
+        }
+        
+        .preview-box {
+            background: #f8f9fa;
+            border: 2px dashed #ccc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 13px;
+        }
+        
+        .preview-box h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .preview-row {
+            display: flex;
+            margin-bottom: 8px;
+        }
+        
+        .preview-row .label {
+            font-weight: 600;
+            width: 180px;
+            color: #555;
+        }
+        
+        .preview-row .value {
+            color: #333;
+            flex: 1;
+        }
+        
+        button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 17px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error, .success {
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 8px;
+            display: none;
+            font-size: 14px;
+        }
+        
+        .error {
+            background: #fee;
+            border-left: 4px solid #f44;
+            color: #c33;
+        }
+        
+        .success {
+            background: #efe;
+            border-left: 4px solid #4a4;
+            color: #363;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.6);
+            animation: fadeIn 0.3s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 3% auto;
+            padding: 0;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 800px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            animation: slideDown 0.3s;
+        }
+        
+        @keyframes slideDown {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px 30px;
+            border-radius: 20px 20px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .close-btn {
+            font-size: 32px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            width: auto;
+            line-height: 1;
+            transition: transform 0.2s;
+            margin: 0;
+        }
+        
+        .close-btn:hover {
+            transform: scale(1.2);
+        }
+        
+        .modal-body {
+            padding: 30px;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 25px;
+            gap: 5px;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            background: #f5f5f5;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+            flex: 1;
+            text-align: center;
+            margin: 0;
+        }
+        
+        .tab:hover {
+            background: #e8e8e8;
+            color: #333;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: translateY(2px);
+            box-shadow: none;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+        
+        .modal-footer {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-radius: 0 0 20px 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .modal-footer button {
+            width: auto;
+            padding: 12px 30px;
+            margin: 0;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 25px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+            
+            .tab {
+                border-radius: 8px;
+            }
+        }
+
+.form-group.required label::after {
+    content: " *";
+    color: #f44;
+    font-weight: bold;
+}
+
+.form-group input.invalid,
+.form-group select.invalid {
+    border-color: #f44 !important;
+    background-color: #fff5f5 !important;
+    animation: shake 0.3s;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+}
+
+.validation-message {
+    color: #f44;
+    font-size: 12px;
+    margin-top: 5px;
+    display: none;
+    font-weight: 600;
+}
+
+.validation-message.show {
+    display: block;
+    animation: fadeIn 0.3s;
+}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>
+            📄 Word → Excel Converter
+            <span class="version-badge">v3.0 PRO</span>
+        </h1>
+        <p class="subtitle">
+            Chuyển đổi file Word sang Excel với <strong>Metadata tùy chỉnh</strong><br>
+            Tự động phát hiện cấu trúc • Output 31 cột • Hỗ trợ 3 AI providers
+        </p>
+        
+        <form id="uploadForm">
+            <!-- File & API Section -->
+            <div class="section-title">
+                📁 Bước 1: Upload File & Chọn AI Provider
+            </div>
+            
+            <div class="form-group">
+                <label for="file">📄 Chọn file Word (.docx)</label>
+                <input type="file" id="file" name="file" accept=".docx" required>
+                <div class="helper-text" id="fileInfo"></div>
+            </div>
+            
+            <!-- THAY ĐỔI từ form-row thành form-group đơn: -->
+            <div class="form-group">
+                <label for="language">🌐 Ngôn ngữ output</label>
+                <select id="language" name="language">
+                    <option value="vi">🇻🇳 Tiếng Việt</option>
+                    <option value="en">🇬🇧 English</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="apiKey">🔑 API Key</label>
+                <input type="password" id="apiKey" name="api_key" placeholder="Nhập API key..." required>
+                <div class="helper-text">
+                    <strong>Groq (Khuyên dùng):</strong> <a href="https://console.groq.com/keys" target="_blank">Tạo free tại console.groq.com/keys</a> - Nhanh nhất!<br>
+                </div>
+            </div>
+            
+            <!-- Metadata Section -->
+            <div class="section-title">
+                🎯 Bước 2: Tùy chỉnh Metadata (Optional)
+            </div>
+            
+            <div class="info-box">
+                <strong>💡 Lưu ý QUAN TRỌNG:</strong> 
+                <ul>
+                    <li><strong style="color: #f44;">⚠️ BẮT BUỘC phải điền:</strong> Test Name, Test Category, Test Hashtag</li>
+                    <li><strong>Nếu để TRỐNG các trường bắt buộc:</strong> Tool sẽ YÊU CẦU bạn điền trước khi xử lý</li>
+                    <li><strong>Nếu chỉ điền Test Name:</strong> Tất cả category & topic name sẽ giống Test Name</li>
+                    <li><strong>Nếu điền riêng Topic/Question:</strong> Sẽ ưu tiên giá trị đã nhập</li>
+                    <li>Hashtag tự động thêm # nếu bạn chưa nhập</li>
+                </ul>
+            </div>
+            
+            <button type="button" onclick="openMetadataModal()">
+                ✏️ Chỉnh sửa Metadata
+            </button>
+            
+            <!-- Preview -->
+            <div class="preview-box" id="previewBox" style="display: none;">
+                <h4>👀 Preview Metadata</h4>
+                <div class="preview-row">
+                    <span class="label">test_name:</span>
+                    <span class="value" id="previewTestName">-</span>
+                </div>
+                <div class="preview-row">
+                    <span class="label">test_category:</span>
+                    <span class="value" id="previewTestCategory">-</span>
+                </div>
+                <div class="preview-row">
+                    <span class="label">test_hashtag:</span>
+                    <span class="value" id="previewTestHashtag">-</span>
+                </div>
+                <div class="preview-row">
+                    <span class="label">test_cost:</span>
+                    <span class="value" id="previewTestCost">-</span>
+                </div>
+                <div class="preview-row">
+                    <span class="label">topic_name:</span>
+                    <span class="value" id="previewTopicName">-</span>
+                </div>
+                <div class="preview-row">
+                    <span class="label">topic_category:</span>
+                    <span class="value" id="previewTopicCategory">-</span>
+                </div>
+                <div class="preview-row">
+                    <span class="label">topic_hashtag:</span>
+                    <span class="value" id="previewTopicHashtag">-</span>
+                </div>
+                <div class="preview-row">
+                    <span class="label">question_category:</span>
+                    <span class="value" id="previewQuestionCategory">-</span>
+                </div>
+                <div class="preview-row">
+                    <span class="label">question_hashtag:</span>
+                    <span class="value" id="previewQuestionHashtag">-</span>
+                </div>
+            </div>
+            
+            <button type="submit" id="submitBtn">
+                🚀 Chuyển đổi ngay
+            </button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p id="loadingText">Đang xử lý... Vui lòng đợi (10-30 giây)</p>
+        </div>
+        
+        <div class="error" id="error"></div>
+        <div class="success" id="success"></div>
+    </div>
+    
+    <!-- Metadata Modal -->
+    <div id="metadataModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>✏️ Chỉnh sửa Metadata</h2>
+                <button class="close-btn" onclick="closeMetadataModal()">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('test')">🎪 Test</button>
+                    <button class="tab" onclick="switchTab('topic')">📚 Topic</button>
+                    <button class="tab" onclick="switchTab('question')">❓ Question</button>
+                </div>
+                
+                <!-- Test Tab -->
+                <div id="testTab" class="tab-content active">
+                    <div class="form-row">
+                        <div class="form-group required">
+                            <label for="testName">Test Name</label>
+                            <input type="text" id="testName" name="test_name" placeholder="VD: Brand Health Check">
+                            <div class="helper-text">Tên bài test (hiển thị ở cột test_name)</div>
+                            <div class="validation-message" id="testNameError">⚠️ Trường này là bắt buộc!</div>
+                        </div>
+                        
+                        <div class="form-group required">
+                            <label for="testCategory">Test Category</label>
+                            <input type="text" id="testCategory" name="test_category" placeholder="VD: Brand Health Check">
+                            <div class="helper-text">Danh mục của test (cột test_category)</div>
+                            <div class="validation-message" id="testCategoryError">⚠️ Trường này là bắt buộc!</div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group required">
+                            <label for="testHashtag">Test Hashtag</label>
+                            <input type="text" id="testHashtag" name="test_hashtag" placeholder="VD: brand_health_check">
+                            <div class="helper-text">Hashtag cho test (cột test_hashtag)</div>
+                            <div class="validation-message" id="testHashtagError">⚠️ Trường này là bắt buộc!</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="testCost">Test Cost</label>
+                            <input type="text" id="testCost" name="test_cost" placeholder="VD: 0" value="0">
+                            <div class="helper-text">Giá của test (cột test_cost)</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Topic Tab -->
+                <div id="topicTab" class="tab-content">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="topicName">Topic Name</label>
+                            <input type="text" id="topicName" name="topic_name" placeholder="Để trống = dùng Test Name">
+                            <div class="helper-text">Tên chủ đề (cột topic_name) - Mặc định giống Test Name</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="topicCategory">Topic Category</label>
+                            <input type="text" id="topicCategory" name="topic_category" placeholder="Để trống = dùng Test Category">
+                            <div class="helper-text">Danh mục của topic (cột topic_category)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="topicHashtag">Topic Hashtag</label>
+                            <input type="text" id="topicHashtag" name="topic_hashtag" placeholder="Để trống = dùng Test Hashtag">
+                            <div class="helper-text">Hashtag cho topic (cột topic_hashtag)</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Question Tab -->
+                <div id="questionTab" class="tab-content">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="questionCategory">Question Category</label>
+                            <input type="text" id="questionCategory" name="question_category" placeholder="Để trống = dùng Test Category">
+                            <div class="helper-text">Danh mục của câu hỏi (cột question_category)</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="questionHashtag">Question Hashtag</label>
+                            <input type="text" id="questionHashtag" name="question_hashtag" placeholder="Để trống = dùng Test Hashtag">
+                            <div class="helper-text">Hashtag cho câu hỏi (cột question_hashtag)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="referenceLink">Reference Link URL <span class="optional">(optional)</span></label>
+                        <input type="text" id="referenceLink" name="reference_link_url" placeholder="https://example.com/reference">
+                        <div class="helper-text">Link tham khảo cho tất cả câu hỏi (cột reference_link_url)</div>
+                    </div>
+                    
+                    <div class="info-box" style="margin-top: 15px;">
+                        <strong>ℹ️ Lưu ý:</strong> Question Text sẽ tự động được trích xuất từ file Word
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button onclick="closeMetadataModal()" style="background: #6c757d;">Đóng</button>
+                <button onclick="saveMetadata()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">💾 Lưu thay đổi</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Modal functions
+        function openMetadataModal() {
+            document.getElementById('metadataModal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeMetadataModal() {
+            document.getElementById('metadataModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+        
+        function switchTab(tabName) {
+            // Hide all tabs
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Show selected tab
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        }
+        
+        function saveMetadata() {
+            // Validate trước khi save
+            if (!validateRequiredFields()) {
+                showError('⚠️ Vui lòng điền đầy đủ Test Name, Test Category và Test Hashtag!');
+                return;
+            }
+            
+            updatePreview();
+            closeMetadataModal();
+            showSuccess('✅ Đã lưu metadata!');
+            setTimeout(() => {
+                successDiv.style.display = 'none';
+            }, 2000);
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('metadataModal');
+            if (event.target === modal) {
+                closeMetadataModal();
+            }
+        }
+        
+        // Form elements
+        const form = document.getElementById('uploadForm');
+        const fileInput = document.getElementById('file');
+        const fileInfo = document.getElementById('fileInfo');
+        const submitBtn = document.getElementById('submitBtn');
+        const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loadingText');
+        const errorDiv = document.getElementById('error');
+        const successDiv = document.getElementById('success');
+        const apiProviderSelect = document.getElementById('apiProvider');
+        const apiKeyInput = document.getElementById('apiKey');
+        
+        // Metadata inputs
+        const testNameInput = document.getElementById('testName');
+        const testCategoryInput = document.getElementById('testCategory');
+        const testHashtagInput = document.getElementById('testHashtag');
+        const testCostInput = document.getElementById('testCost');
+        const topicNameInput = document.getElementById('topicName');
+        const topicCategoryInput = document.getElementById('topicCategory');
+        const topicHashtagInput = document.getElementById('topicHashtag');
+        const questionCategoryInput = document.getElementById('questionCategory');
+        const questionHashtagInput = document.getElementById('questionHashtag');
+        const referenceLinkInput = document.getElementById('referenceLink');
+        const previewBox = document.getElementById('previewBox');
+
+        setupValidationListeners();
+        
+        // Show file info
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                fileInfo.textContent = `📄 ${file.name} (${sizeMB} MB)`;
+                
+                if (file.size > 4.5 * 1024 * 1024) {
+                    fileInfo.style.color = '#f44';
+                    fileInfo.textContent += ' - ⚠️ File quá lớn!';
+                } else {
+                    fileInfo.style.color = '#4a4';
+                }
+            }
+        });
+        
+        // Update preview on input change
+        function updatePreview() {
+            const testName = testNameInput.value.trim() || 'AUTO (từ Word)';
+            const testCategory = testCategoryInput.value.trim() || testName;
+            const testHashtag = testHashtagInput.value.trim() 
+                ? (testHashtagInput.value.startsWith('#') ? testHashtagInput.value : '#' + testHashtagInput.value)
+                : 'AUTO (từ tên)';
+            const testCost = testCostInput.value.trim() || '0';
+            const topicName = topicNameInput.value.trim() || testName;
+            const topicCategory = topicCategoryInput.value.trim() || testCategory;
+            const topicHashtag = topicHashtagInput.value.trim()
+                ? (topicHashtagInput.value.startsWith('#') ? topicHashtagInput.value : '#' + topicHashtagInput.value)
+                : testHashtag;
+            const questionCategory = questionCategoryInput.value.trim() || testCategory;
+            const questionHashtag = questionHashtagInput.value.trim()
+                ? (questionHashtagInput.value.startsWith('#') ? questionHashtagInput.value : '#' + questionHashtagInput.value)
+                : testHashtag;
+            
+            document.getElementById('previewTestName').textContent = testName;
+            document.getElementById('previewTestCategory').textContent = testCategory;
+            document.getElementById('previewTestHashtag').textContent = testHashtag;
+            document.getElementById('previewTestCost').textContent = testCost;
+            document.getElementById('previewTopicName').textContent = topicName;
+            document.getElementById('previewTopicCategory').textContent = topicCategory;
+            document.getElementById('previewTopicHashtag').textContent = topicHashtag;
+            document.getElementById('previewQuestionCategory').textContent = questionCategory;
+            document.getElementById('previewQuestionHashtag').textContent = questionHashtag;
+            
+            previewBox.style.display = 'block';
+        }
+        
+        // Add event listeners for preview update
+        [testNameInput, testCategoryInput, testHashtagInput, testCostInput,
+         topicNameInput, topicCategoryInput, topicHashtagInput, questionCategoryInput, questionHashtagInput]
+            .forEach(input => {
+                input.addEventListener('input', updatePreview);
+                input.addEventListener('change', updatePreview);
+            });
+        
+        // Initial preview
+        updatePreview();
+        
+        // Handle form submit
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Reset messages
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+
+            // Validate required metadata fields
+            if (!validateRequiredFields()) {
+                showError('⚠️ Vui lòng mở Metadata và điền đầy đủ Test Name, Test Category và Test Hashtag!');
+                openMetadataModal();
+                return;
+            }
+            
+            const formData = new FormData();
+            const file = fileInput.files[0];
+            const apiKey = apiKeyInput.value.trim();
+            const language = document.getElementById('language').value;
+            
+            // Validate
+            if (!file) {
+                showError('Vui lòng chọn file Word!');
+                return;
+            }
+            
+            if (!apiKey || apiKey.length < 20) {
+                showError('API key không hợp lệ! Vui lòng nhập đúng API key.');
+                return;
+            }
+            
+            if (!apiKey.startsWith('gsk_')) {
+                showError('Groq API key phải bắt đầu bằng "gsk_"');
+                return;
+            }
+                        
+            // Append all form data
+            formData.append('file', file);
+            formData.append('api_key', apiKey);
+            formData.append('language', language);
+            formData.append('test_name', testNameInput.value.trim());
+            formData.append('test_category', testCategoryInput.value.trim());
+            formData.append('test_hashtag', testHashtagInput.value.trim());
+            formData.append('test_cost', testCostInput.value.trim() || '0');
+            formData.append('topic_name', topicNameInput.value.trim());
+            formData.append('topic_category', topicCategoryInput.value.trim());
+            formData.append('topic_hashtag', topicHashtagInput.value.trim());
+            formData.append('question_category', questionCategoryInput.value.trim());
+            formData.append('question_hashtag', questionHashtagInput.value.trim());
+            formData.append('reference_link_url', referenceLinkInput.value.trim());
+            
+            // Show loading
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Đang xử lý...';
+            loading.style.display = 'block';
+            loadingText.textContent = 'Đang phân tích với Groq... Vui lòng đợi (10-30 giây)';
+            
+            try {
+                const response = await fetch('/convert', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Lỗi không xác định');
+                }
+                
+                // Download file
+                const blob = await response.blob();
+                const defaultName = file.name.replace('.docx', `_converted_${language}.xlsx`);
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = defaultName;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                showSuccess(`✅ Chuyển đổi thành công! File đã tải xuống: ${defaultName}`);
+                
+            } catch (error) {
+                showError('❌ ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🚀 Chuyển đổi ngay';
+                loading.style.display = 'none';
+            }
+        });
+        
+        function showError(message) {
+            errorDiv.innerHTML = message;
+            errorDiv.style.display = 'block';
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        function showSuccess(message) {
+            successDiv.innerHTML = message;
+            successDiv.style.display = 'block';
+            setTimeout(() => {
+                successDiv.style.display = 'none';
+            }, 8000);
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }
+
+        // Validation function
+function validateRequiredFields() {
+    const requiredFields = [
+        { input: testNameInput, error: 'testNameError' },
+        { input: testCategoryInput, error: 'testCategoryError' },
+        { input: testHashtagInput, error: 'testHashtagError' }
+    ];
+    
+    let isValid = true;
+    
+    requiredFields.forEach(field => {
+        const value = field.input.value.trim();
+        const errorElement = document.getElementById(field.error);
+        
+        if (!value) {
+            field.input.classList.add('invalid');
+            errorElement.classList.add('show');
+            isValid = false;
+        } else {
+            field.input.classList.remove('invalid');
+            errorElement.classList.remove('show');
+        }
+    });
+    
+    return isValid;
+}
+
+// Clear validation on input
+function setupValidationListeners() {
+    [testNameInput, testCategoryInput, testHashtagInput].forEach(input => {
+        input.addEventListener('input', function() {
+            this.classList.remove('invalid');
+            const errorId = this.id + 'Error';
+            const errorElement = document.getElementById(errorId);
+            if (errorElement) {
+                errorElement.classList.remove('show');
+            }
+        });
+    });
+}
+    </script>
+</body>
+</html>
