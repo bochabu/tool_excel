@@ -607,147 +607,19 @@ def convert_json_to_excel(data: list) -> bytes:
 @app.get("/", response_class=HTMLResponse)
 async def home():
     """Serve HTML interface"""
-    # Inline HTML for Vercel deployment
-    html_content = """<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Word → Excel Converter v3 - Custom Metadata</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 32px;
-            text-align: center;
-        }
-        .version-badge {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 6px 14px;
-            border-radius: 15px;
-            font-size: 13px;
-            font-weight: 600;
-        }
-        .subtitle {
-            color: #666;
-            text-align: center;
-            margin-bottom: 40px;
-            font-size: 15px;
-        }
-        button {
-            width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 17px;
-            font-weight: 700;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        button:hover { transform: translateY(-3px); }
-        input, select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            margin: 8px 0;
-        }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; font-weight: 600; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>📄 Word → Excel Converter <span class="version-badge">v3.1</span></h1>
-        <p class="subtitle">Chuyển đổi file Word sang Excel với Metadata tùy chỉnh</p>
-        
-        <form id="uploadForm">
-            <div class="form-group">
-                <label>📄 Chọn file Word (.docx)</label>
-                <input type="file" id="file" accept=".docx" required>
-            </div>
-            
-            <div class="form-group">
-                <label>🌐 Ngôn ngữ output</label>
-                <select id="language">
-                    <option value="vi">🇻🇳 Tiếng Việt</option>
-                    <option value="en">🇬🇧 English</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label>🔑 Groq API Key</label>
-                <input type="password" id="apiKey" placeholder="Nhập API key..." required>
-                <small>Tạo free tại: <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a></small>
-            </div>
-            
-            <button type="submit">🚀 Chuyển đổi ngay</button>
-        </form>
-        
-        <div id="status" style="margin-top: 20px; padding: 15px; border-radius: 8px; display: none;"></div>
-    </div>
-    
-    <script>
-        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const status = document.getElementById('status');
-            const formData = new FormData();
-            
-            formData.append('file', document.getElementById('file').files[0]);
-            formData.append('api_key', document.getElementById('apiKey').value);
-            formData.append('language', document.getElementById('language').value);
-            
-            status.style.display = 'block';
-            status.style.background = '#e3f2fd';
-            status.innerHTML = '⏳ Đang xử lý... Vui lòng đợi (10-30 giây)';
-            
-            try {
-                const response = await fetch('/convert', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Lỗi không xác định');
-                }
-                
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'converted.xlsx';
-                a.click();
-                
-                status.style.background = '#e8f5e9';
-                status.innerHTML = '✅ Chuyển đổi thành công! File đã tải xuống.';
-            } catch (error) {
-                status.style.background = '#ffebee';
-                status.innerHTML = '❌ ' + error.message;
-            }
-        });
-    </script>
-</body>
-</html>"""
-    return HTMLResponse(content=html_content)
+    try:
+        with open("index.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+        return HTMLResponse(content=html_content)
+    except FileNotFoundError:
+        return HTMLResponse(content="""
+        <html>
+            <body>
+                <h1>Error: Template not found</h1>
+                <p>Please create templates/index.html file</p>
+            </body>
+        </html>
+        """, status_code=404)
 
 
 @app.post("/convert")
