@@ -607,8 +607,11 @@ def convert_json_to_excel(data: list) -> bytes:
 @app.get("/", response_class=HTMLResponse)
 async def home():
     """Serve HTML interface"""
+    import os
     try:
-        with open("templates/index.html", "r", encoding="utf-8") as f:
+        # Vercel đặt templates ở root level
+        template_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates", "index.html")
+        with open(template_path, "r", encoding="utf-8") as f:
             html_content = f.read()
         return HTMLResponse(content=html_content)
     except FileNotFoundError:
@@ -729,6 +732,6 @@ async def health_check():
         "features": ["groq_only", "custom_metadata", "auto_detect"]
     }
 
-
 # Handler for Vercel deployment
-handler = app
+from mangum import Mangum
+handler = Mangum(app)
