@@ -608,18 +608,34 @@ def convert_json_to_excel(data: list) -> bytes:
 async def home():
     """Serve HTML interface"""
     try:
-        with open("templates/index.html", "r", encoding="utf-8") as f:
-            html_content = f.read()
-        return HTMLResponse(content=html_content)
+        # Try multiple paths for Vercel
+        possible_paths = [
+            "templates/index.html",
+            "../templates/index.html",
+            "/var/task/templates/index.html"
+        ]
+        
+        html_content = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    html_content = f.read()
+                break
+        
+        if html_content:
+            return HTMLResponse(content=html_content)
+        else:
+            raise FileNotFoundError
+            
     except FileNotFoundError:
         return HTMLResponse(content="""
         <html>
-            <body>
-                <h1>Error: Template not found</h1>
-                <p>Please create templates/index.html file</p>
+            <body style="font-family: Arial; padding: 40px; text-align: center;">
+                <h1>Word → Excel Converter v3.1</h1>
+                <p>API is running! Use POST /convert to convert files.</p>
             </body>
         </html>
-        """, status_code=404)
+        """)
 
 
 @app.post("/convert")
@@ -729,6 +745,4 @@ async def health_check():
         "features": ["groq_only", "custom_metadata", "auto_detect"]
     }
 
-
-# Handler for Vercel deployment
-handler = app
+app = app
