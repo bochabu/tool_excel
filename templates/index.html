@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Word → CSV Converter - Groq</title>
+    <title>Word → Excel Converter v3 - Custom Metadata</title>
     <style>
         * {
             margin: 0;
@@ -56,16 +56,6 @@
             line-height: 1.8;
         }
         
-        .info-banner {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-            padding: 15px 20px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            text-align: center;
-            font-weight: 600;
-        }
-        
         .section-title {
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
@@ -74,6 +64,9 @@
             margin: 30px 0 20px 0;
             font-size: 16px;
             font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
         
@@ -126,16 +119,6 @@
             color: #666;
             margin-top: 5px;
             line-height: 1.4;
-        }
-        
-        .helper-text a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        
-        .helper-text a:hover {
-            text-decoration: underline;
         }
         
         .info-box {
@@ -245,7 +228,6 @@
             border-radius: 8px;
             display: none;
             font-size: 14px;
-            white-space: pre-wrap;
         }
         
         .error {
@@ -260,6 +242,7 @@
             color: #363;
         }
         
+        /* Modal Styles */
         .modal {
             display: none;
             position: fixed;
@@ -423,27 +406,55 @@
                 border-radius: 8px;
             }
         }
+
+.form-group.required label::after {
+    content: " *";
+    color: #f44;
+    font-weight: bold;
+}
+
+.form-group input.invalid,
+.form-group select.invalid {
+    border-color: #f44 !important;
+    background-color: #fff5f5 !important;
+    animation: shake 0.3s;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+}
+
+.validation-message {
+    color: #f44;
+    font-size: 12px;
+    margin-top: 5px;
+    display: none;
+    font-weight: 600;
+}
+
+.validation-message.show {
+    display: block;
+    animation: fadeIn 0.3s;
+}
     </style>
 </head>
 <body>
     <div class="container">
         <h1>
-            📄 Word → CSV Converter
-            <span class="version-badge">v3.2 Groq</span>
+            📄 Word → Excel Converter
+            <span class="version-badge">v3.0 PRO</span>
         </h1>
         <p class="subtitle">
-            Chuyển đổi file Word sang CSV với <strong>Groq AI</strong><br>
-            Tối ưu cho Vercel • Nhanh nhất • Miễn phí 100%
+            Chuyển đổi file Word sang Excel với <strong>Metadata tùy chỉnh</strong><br>
+            Tự động phát hiện cấu trúc • Output 31 cột • Hỗ trợ 3 AI providers
         </p>
-        
-        <div class="info-banner">
-            ⚡ Phiên bản tối ưu: Chỉ dùng Groq API - Nhanh hơn 5x - Output CSV (mở được bằng Excel)
-        </div>
         
         <form id="uploadForm">
             <!-- File & API Section -->
             <div class="section-title">
-                📁 Bước 1: Upload File & API Key
+                📁 Bước 1: Upload File & Chọn AI Provider
             </div>
             
             <div class="form-group">
@@ -452,23 +463,20 @@
                 <div class="helper-text" id="fileInfo"></div>
             </div>
             
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="language">🌐 Ngôn ngữ output</label>
-                    <select id="language" name="language">
-                        <option value="vi">🇻🇳 Tiếng Việt</option>
-                        <option value="en">🇬🇧 English</option>
-                    </select>
-                </div>
+            <!-- THAY ĐỔI từ form-row thành form-group đơn: -->
+            <div class="form-group">
+                <label for="language">🌐 Ngôn ngữ output</label>
+                <select id="language" name="language">
+                    <option value="vi">🇻🇳 Tiếng Việt</option>
+                    <option value="en">🇬🇧 English</option>
+                </select>
             </div>
             
             <div class="form-group">
-                <label for="apiKey">🔑 Groq API Key (Miễn phí)</label>
-                <input type="password" id="apiKey" name="api_key" placeholder="gsk_..." required>
+                <label for="apiKey">🔑 API Key</label>
+                <input type="password" id="apiKey" name="api_key" placeholder="Nhập API key..." required>
                 <div class="helper-text">
-                    <strong>✨ Tạo free API key:</strong> 
-                    <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a>
-                    (Không cần thẻ tín dụng - 100% miễn phí)
+                    <strong>Groq (Khuyên dùng):</strong> <a href="https://console.groq.com/keys" target="_blank">Tạo free tại console.groq.com/keys</a> - Nhanh nhất!<br>
                 </div>
             </div>
             
@@ -478,9 +486,10 @@
             </div>
             
             <div class="info-box">
-                <strong>💡 Mẹo:</strong> Metadata này sẽ được áp dụng cho TẤT CẢ các dòng trong file CSV output.
+                <strong>💡 Lưu ý QUAN TRỌNG:</strong> 
                 <ul>
-                    <li><strong>Nếu ĐỂ TRỐNG tất cả:</strong> Tool sẽ tự động trích xuất từ Word</li>
+                    <li><strong style="color: #f44;">⚠️ BẮT BUỘC phải điền:</strong> Test Name, Test Category, Test Hashtag</li>
+                    <li><strong>Nếu để TRỐNG các trường bắt buộc:</strong> Tool sẽ YÊU CẦU bạn điền trước khi xử lý</li>
                     <li><strong>Nếu chỉ điền Test Name:</strong> Tất cả category & topic name sẽ giống Test Name</li>
                     <li><strong>Nếu điền riêng Topic/Question:</strong> Sẽ ưu tiên giá trị đã nhập</li>
                     <li>Hashtag tự động thêm # nếu bạn chưa nhập</li>
@@ -539,7 +548,7 @@
         
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p id="loadingText">Đang xử lý với Groq AI... Vui lòng đợi (10-30 giây)</p>
+            <p id="loadingText">Đang xử lý... Vui lòng đợi (10-30 giây)</p>
         </div>
         
         <div class="error" id="error"></div>
@@ -564,24 +573,27 @@
                 <!-- Test Tab -->
                 <div id="testTab" class="tab-content active">
                     <div class="form-row">
-                        <div class="form-group">
+                        <div class="form-group required">
                             <label for="testName">Test Name</label>
                             <input type="text" id="testName" name="test_name" placeholder="VD: Brand Health Check">
                             <div class="helper-text">Tên bài test (hiển thị ở cột test_name)</div>
+                            <div class="validation-message" id="testNameError">⚠️ Trường này là bắt buộc!</div>
                         </div>
                         
-                        <div class="form-group">
+                        <div class="form-group required">
                             <label for="testCategory">Test Category</label>
                             <input type="text" id="testCategory" name="test_category" placeholder="VD: Brand Health Check">
                             <div class="helper-text">Danh mục của test (cột test_category)</div>
+                            <div class="validation-message" id="testCategoryError">⚠️ Trường này là bắt buộc!</div>
                         </div>
                     </div>
                     
                     <div class="form-row">
-                        <div class="form-group">
+                        <div class="form-group required">
                             <label for="testHashtag">Test Hashtag</label>
                             <input type="text" id="testHashtag" name="test_hashtag" placeholder="VD: brand_health_check">
                             <div class="helper-text">Hashtag cho test (cột test_hashtag)</div>
+                            <div class="validation-message" id="testHashtagError">⚠️ Trường này là bắt buộc!</div>
                         </div>
                         
                         <div class="form-group">
@@ -638,12 +650,16 @@
                         <input type="text" id="referenceLink" name="reference_link_url" placeholder="https://example.com/reference">
                         <div class="helper-text">Link tham khảo cho tất cả câu hỏi (cột reference_link_url)</div>
                     </div>
+                    
+                    <div class="info-box" style="margin-top: 15px;">
+                        <strong>ℹ️ Lưu ý:</strong> Question Text sẽ tự động được trích xuất từ file Word
+                    </div>
                 </div>
             </div>
             
             <div class="modal-footer">
                 <button onclick="closeMetadataModal()" style="background: #6c757d;">Đóng</button>
-                <button onclick="saveMetadata()">💾 Lưu thay đổi</button>
+                <button onclick="saveMetadata()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">💾 Lưu thay đổi</button>
             </div>
         </div>
     </div>
@@ -661,17 +677,25 @@
         }
         
         function switchTab(tabName) {
+            // Hide all tabs
             const tabs = document.querySelectorAll('.tab');
             const tabContents = document.querySelectorAll('.tab-content');
             
             tabs.forEach(tab => tab.classList.remove('active'));
             tabContents.forEach(content => content.classList.remove('active'));
             
+            // Show selected tab
             event.target.classList.add('active');
             document.getElementById(tabName + 'Tab').classList.add('active');
         }
         
         function saveMetadata() {
+            // Validate trước khi save
+            if (!validateRequiredFields()) {
+                showError('⚠️ Vui lòng điền đầy đủ Test Name, Test Category và Test Hashtag!');
+                return;
+            }
+            
             updatePreview();
             closeMetadataModal();
             showSuccess('✅ Đã lưu metadata!');
@@ -680,6 +704,7 @@
             }, 2000);
         }
         
+        // Close modal when clicking outside
         window.onclick = function(event) {
             const modal = document.getElementById('metadataModal');
             if (event.target === modal) {
@@ -696,6 +721,7 @@
         const loadingText = document.getElementById('loadingText');
         const errorDiv = document.getElementById('error');
         const successDiv = document.getElementById('success');
+        const apiProviderSelect = document.getElementById('apiProvider');
         const apiKeyInput = document.getElementById('apiKey');
         
         // Metadata inputs
@@ -710,6 +736,8 @@
         const questionHashtagInput = document.getElementById('questionHashtag');
         const referenceLinkInput = document.getElementById('referenceLink');
         const previewBox = document.getElementById('previewBox');
+
+        setupValidationListeners();
         
         // Show file info
         fileInput.addEventListener('change', function(e) {
@@ -727,7 +755,7 @@
             }
         });
         
-        // Update preview
+        // Update preview on input change
         function updatePreview() {
             const testName = testNameInput.value.trim() || 'AUTO (từ Word)';
             const testCategory = testCategoryInput.value.trim() || testName;
@@ -758,6 +786,7 @@
             previewBox.style.display = 'block';
         }
         
+        // Add event listeners for preview update
         [testNameInput, testCategoryInput, testHashtagInput, testCostInput,
          topicNameInput, topicCategoryInput, topicHashtagInput, questionCategoryInput, questionHashtagInput]
             .forEach(input => {
@@ -765,20 +794,30 @@
                 input.addEventListener('change', updatePreview);
             });
         
+        // Initial preview
         updatePreview();
         
         // Handle form submit
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            // Reset messages
             errorDiv.style.display = 'none';
             successDiv.style.display = 'none';
+
+            // Validate required metadata fields
+            if (!validateRequiredFields()) {
+                showError('⚠️ Vui lòng mở Metadata và điền đầy đủ Test Name, Test Category và Test Hashtag!');
+                openMetadataModal();
+                return;
+            }
             
             const formData = new FormData();
             const file = fileInput.files[0];
             const apiKey = apiKeyInput.value.trim();
             const language = document.getElementById('language').value;
             
+            // Validate
             if (!file) {
                 showError('Vui lòng chọn file Word!');
                 return;
@@ -793,7 +832,8 @@
                 showError('Groq API key phải bắt đầu bằng "gsk_"');
                 return;
             }
-            
+                        
+            // Append all form data
             formData.append('file', file);
             formData.append('api_key', apiKey);
             formData.append('language', language);
@@ -808,10 +848,11 @@
             formData.append('question_hashtag', questionHashtagInput.value.trim());
             formData.append('reference_link_url', referenceLinkInput.value.trim());
             
+            // Show loading
             submitBtn.disabled = true;
             submitBtn.textContent = '⏳ Đang xử lý...';
             loading.style.display = 'block';
-            loadingText.textContent = 'Đang phân tích với Groq AI... Vui lòng đợi (10-30 giây)';
+            loadingText.textContent = 'Đang phân tích với Groq... Vui lòng đợi (10-30 giây)';
             
             try {
                 const response = await fetch('/convert', {
@@ -824,8 +865,9 @@
                     throw new Error(error.detail || 'Lỗi không xác định');
                 }
                 
+                // Download file
                 const blob = await response.blob();
-                const defaultName = file.name.replace('.docx', `_converted_${language}.csv`);
+                const defaultName = file.name.replace('.docx', `_converted_${language}.xlsx`);
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
@@ -835,7 +877,7 @@
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(a);
                 
-                showSuccess(`✅ Chuyển đổi thành công!\n\nFile đã tải xuống: ${defaultName}\n\n💡 Mở file CSV bằng Excel hoặc Google Sheets`);
+                showSuccess(`✅ Chuyển đổi thành công! File đã tải xuống: ${defaultName}`);
                 
             } catch (error) {
                 showError('❌ ' + error.message);
@@ -847,19 +889,64 @@
         });
         
         function showError(message) {
-            errorDiv.textContent = message;
+            errorDiv.innerHTML = message;
             errorDiv.style.display = 'block';
             window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
         }
         
         function showSuccess(message) {
-            successDiv.textContent = message;
+            successDiv.innerHTML = message;
             successDiv.style.display = 'block';
             setTimeout(() => {
                 successDiv.style.display = 'none';
             }, 8000);
             window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
         }
+
+        // Validation function
+function validateRequiredFields() {
+    const requiredFields = [
+        { input: testNameInput, error: 'testNameError' },
+        { input: testCategoryInput, error: 'testCategoryError' },
+        { input: testHashtagInput, error: 'testHashtagError' }
+    ];
+    
+    let isValid = true;
+    
+    requiredFields.forEach(field => {
+        const value = field.input.value.trim();
+        const errorElement = document.getElementById(field.error);
+        
+        if (!value) {
+            field.input.classList.add('invalid');
+            errorElement.classList.add('show');
+            isValid = false;
+        } else {
+            field.input.classList.remove('invalid');
+            errorElement.classList.remove('show');
+        }
+    });
+    
+    return isValid;
+}
+
+// Clear validation on input
+function setupValidationListeners() {
+    [testNameInput, testCategoryInput, testHashtagInput].forEach(input => {
+        input.addEventListener('input', function() {
+            this.classList.remove('invalid');
+            const errorId = this.id + 'Error';
+            const errorElement = document.getElementById(errorId);
+            if (errorElement) {
+                errorElement.classList.remove('show');
+            }
+        });
+    });
+}
     </script>
 </body>
 </html>
