@@ -606,20 +606,39 @@ def convert_json_to_excel(data: list) -> bytes:
 
 @app.get("/", response_class=HTMLResponse)
 async def home():
-    """Serve HTML interface"""
-    try:
-        with open("templates/index.html", "r", encoding="utf-8") as f:
-            html_content = f.read()
-        return HTMLResponse(content=html_content)
-    except FileNotFoundError:
-        return HTMLResponse(content="""
-        <html>
-            <body>
-                <h1>Error: Template not found</h1>
-                <p>Please create templates/index.html file</p>
-            </body>
-        </html>
-        """, status_code=404)
+    """Serve HTML interface - Fixed for Vercel"""
+    import os
+    
+    # Try multiple paths for Vercel compatibility
+    possible_paths = [
+        "templates/index.html",           # Normal path
+        "api/templates/index.html",       # Vercel path
+        os.path.join(os.path.dirname(__file__), "templates/index.html")  # Relative to this file
+    ]
+    
+    for html_path in possible_paths:
+        try:
+            if os.path.exists(html_path):
+                with open(html_path, "r", encoding="utf-8") as f:
+                    html_content = f.read()
+                return HTMLResponse(content=html_content)
+        except Exception as e:
+            print(f"Failed to load {html_path}: {e}")
+            continue
+    
+    # Fallback: Return inline HTML
+    return HTMLResponse(content="""
+    <!DOCTYPE html>
+    <html>
+    <head><title>Word to Excel Converter</title></head>
+    <body>
+        <h1>⚠️ Template Error</h1>
+        <p>Cannot find index.html. Please check file structure.</p>
+        <p>Working directory: """ + os.getcwd() + """</p>
+        <p>Files in current dir: """ + str(os.listdir('.')) + """</p>
+    </body>
+    </html>
+    """, status_code=500)
 
 
 @app.post("/convert")
