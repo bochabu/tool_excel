@@ -729,4 +729,6 @@ async def health_check():
         "features": ["groq_only", "custom_metadata", "auto_detect"]
     }
 
-app = app
+
+# Handler for Vercel deployment
+handler = app
