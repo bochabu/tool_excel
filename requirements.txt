@@ -7,4 +7,3 @@ openpyxl
 jinja2
 python-dotenv
 groq
-mangum

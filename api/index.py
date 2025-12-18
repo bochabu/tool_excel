@@ -13,7 +13,6 @@ import io
 import re
 from groq import Groq
 import traceback
-from mangum import Mangum
 
 app = FastAPI(title="Word to Excel Converter v3.1")
 
@@ -731,9 +730,5 @@ async def health_check():
     }
 
 
-
-# THAY BẰNG:
-
-
 # Handler for Vercel deployment
-handler = Mangum(app)
+handler = app
